@@ -35,39 +35,43 @@ Notation N := nat.
 
 Notation succ := S.
 
-Inductive BasicSierpinskian := | tru | indt.
-Notation SB := BasicSierpinskian.
 
-Definition SBand (sb1 sb2 : SB) := 
+Inductive Basic := | tru | indt.
+
+Module Basic.
+
+Definition and (sb1 sb2 : Basic) := 
   match sb1,sb2 with | tru, tru => tru | _, _ => indt end.
 
-Lemma SBand_tru : forall sb1 sb2 : SB, SBand sb1 sb2 = tru <-> sb1 = tru /\ sb2 = tru.
+Lemma and_tru : forall sb1 sb2 : Basic, and sb1 sb2 = tru <-> sb1 = tru /\ sb2 = tru.
 Proof. 
-  unfold SBand. split.
+  unfold and. split.
   - destruct sb1, sb2. all: auto.
   - destruct sb1, sb2. 1: reflexivity. all: intros [H1 H2]; discriminate.
 Qed.
 
-Definition SBor (sb1 sb2 : SB) := 
+Definition or (sb1 sb2 : Basic) := 
   match sb1,sb2 with | indt, indt => indt | _, _ => tru end.
  
-Lemma SBor_tru : forall sb1 sb2 : SB, SBor sb1 sb2 = tru <-> sb1 = tru \/ sb2 = tru.
+Lemma or_tru : forall sb1 sb2 : Basic, or sb1 sb2 = tru <-> sb1 = tru \/ sb2 = tru.
 Proof. 
-  unfold SBor. split.
+  unfold or. split.
   - destruct sb1, sb2. all: auto.
   - destruct sb1, sb2. 1,2,3: reflexivity. all: intros [H1|H2]; discriminate.
 Qed.
 
+End Basic.
 
-Definition next_after (s : N -> SB) : Prop := 
+
+Definition next_after (s : N -> Basic) : Prop := 
   forall n, s n = tru -> s (succ n) = tru.
 
-Definition all_after (s : N -> SB) : Prop := 
+Definition all_after (s : N -> Basic) : Prop := 
   forall n, s n = tru -> forall m, n <= m -> s m = tru.
 
 
 Record Sierpinskian := mkSierpinskian {
-  seq :> N -> SB;
+  seq :> N -> Basic;
   proper : next_after seq
 }.
 
@@ -90,7 +94,7 @@ Proof.
   rewrite He. rewrite -> Nat.add_comm. now apply Hk.
 Qed.
 
-Lemma next_implies_all_after : forall seq : N -> SB, 
+Lemma next_implies_all_after : forall seq : N -> Basic, 
   next_after seq -> all_after seq.
 Proof.
   intros seq H. unfold next_after, all_after in *. 
@@ -150,10 +154,10 @@ Qed.
 
 
 
-Lemma next_after_cnst : forall b : SB, next_after (fun _ : N => b).
+Lemma next_after_cnst : forall b : Basic, next_after (fun _ : N => b).
 Proof. intro b. unfold next_after. intros n H. exact H. Qed.
 
-Definition tru_from (n : nat) : nat -> BasicSierpinskian := 
+Definition tru_from (n : nat) : nat -> Basic := 
   fun k => if Nat.leb n k then tru else indt.
 Lemma tru_from_next (n : nat) : forall k, 
   tru_from n k = tru -> tru_from n (succ k) = tru.
@@ -223,9 +227,9 @@ Qed.
 
 
 
-Definition and_seq (s1 s2 : N -> SB) := fun n => SBand (s1 n) (s2 n).
+Definition and_seq (s1 s2 : N -> Basic) := fun n => Basic.and (s1 n) (s2 n).
 
-Lemma next_after_and : forall (s1 s2 : N -> SB), 
+Lemma next_after_and : forall (s1 s2 : N -> Basic), 
   next_after s1 -> next_after s2 -> next_after (and_seq s1 s2).
 Proof.
   intros s1 s2 Hs1 Hs2 n Hs12.
@@ -261,11 +265,11 @@ Proof.
   - unfold eqv, true. simpl. unfold and_seq. 
     intros [i Hi].
     split; exists i; intros j Hij; pose proof (Hi j Hij) as Hj;
-    apply SBand_tru in Hj; destruct Hj; assumption.
+    apply Basic.and_tru in Hj; destruct Hj; assumption.
   - intros [H1 H2].
     apply (eqv_trans _ (and true true)). 
     now apply and_respectful.
-    unfold and, and_seq, SBand, true, eqv; simpl. 
+    unfold and, and_seq, Basic.and, true, eqv; simpl. 
     exists 0. reflexivity.
 Qed.
 
@@ -281,15 +285,15 @@ Proof.
   destruct (s1 j); destruct (s2 j); destruct (s3 j); reflexivity.
 Qed.
   
-Definition or_seq (s1 s2 : N -> SB) := fun n => SBor (s1 n) (s2 n).
+Definition or_seq (s1 s2 : N -> Basic) := fun n => Basic.or (s1 n) (s2 n).
 
-Lemma next_after_or : forall (s1 s2 : N -> SB), 
+Lemma next_after_or : forall (s1 s2 : N -> Basic), 
   next_after s1 -> next_after s2 -> next_after (or_seq s1 s2).
 Proof.
   intros s1 s2 Hs1 Hs2 n Hs12.
   unfold or_seq, next_after in *.
-  apply SBor_tru in Hs12.
-  apply SBor_tru.
+  apply Basic.or_tru in Hs12.
+  apply Basic.or_tru.
   destruct Hs12 as [Hs1n|Hs2n].
   - left. apply Hs1. exact Hs1n.
   - right. apply Hs2. exact Hs2n.
@@ -319,7 +323,7 @@ Proof.
   - unfold eqv, true. simpl. unfold or_seq. 
     intros [i Hi].
     pose proof (Hi i (Nat.le_refl i)) as H12i. 
-    apply SBor_tru in H12i.
+    apply Basic.or_tru in H12i.
     destruct H12i as [H1i|H2i].
     -- left. exists i. exact (all_after_sier s1 _ H1i).
     -- right. exists i. exact (all_after_sier s2 _ H2i).
@@ -328,7 +332,7 @@ Proof.
     -- destruct H1 as [i1 H1]. exists i1. intros j Hij. specialize H1 with j.
        unfold or_seq. rewrite -> H1. simpl. reflexivity. exact Hij.
     -- destruct H2 as [i2 H2]. exists i2. intros j Hij. specialize H2 with j.
-       unfold or_seq. rewrite -> H2. rewrite -> SBor_tru. right. reflexivity. exact Hij.
+       unfold or_seq. rewrite -> H2. rewrite -> Basic.or_tru. right. reflexivity. exact Hij.
 Qed.
 
 Lemma or_comm : forall s1 s2 : Sierpinskian, or s1 s2 == or s2 s1.
@@ -373,14 +377,14 @@ Bool.andb_orb_distrib_l : forall b1 b2 b3 : B, ((b1 || b2) && b3) = ((b1 && b3) 
 Bool.orb_andb_distrib_r : forall b1 b2 b3 : B, (b1 || (b2 && b3)) = ((b1 || b2) && (b1 || b3))
 *)
 
-Fixpoint one_of_le (seq : N -> SB) (n : N) : SB :=
+Fixpoint one_of_le (seq : N -> Basic) (n : N) : Basic :=
   match n with
   | 0 => seq 0
-  | succ m => SBor (one_of_le seq m) (seq (succ m))
+  | succ m => Basic.or (one_of_le seq m) (seq (succ m))
   end. 
  
 Lemma one_of_le_succ : forall seq n, 
-  one_of_le seq (succ n) = SBor (one_of_le seq n) (seq (succ n)).
+  one_of_le seq (succ n) = Basic.or (one_of_le seq n) (seq (succ n)).
 Proof. intros; auto. Qed.
 
 Import PeanoNat.
@@ -408,10 +412,10 @@ Proof.
       --- rewrite -> Nat.lt_succ_r in H. rewrite -> IHm. now simpl.
          exists i. split. exact H. exact Ht.
       --- rewrite -> H in Ht. rewrite -> Ht. 
-          unfold SBor. destruct (one_of_le seq m); reflexivity.
+          unfold Basic.or. destruct (one_of_le seq m); reflexivity.
 Qed.
 
-Fixpoint disj_seq (ss : N -> (N -> SB)) (n : N) : SB := 
+Fixpoint disj_seq (ss : N -> (N -> Basic)) (n : N) : Basic := 
   match n with
   | 0 => one_of_le (fun k => ss k 0) 0
   | succ m => 
@@ -454,7 +458,7 @@ Proof.
     -- exact H.
 Qed. 
 
-Lemma next_after_disj : forall seqs : N -> (N -> SB), 
+Lemma next_after_disj : forall seqs : N -> (N -> Basic), 
   (forall n, next_after (seqs n)) -> next_after (disj_seq seqs).
 Proof.
   intros ses H.

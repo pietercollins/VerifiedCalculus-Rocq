@@ -15,25 +15,24 @@ Notation B := Boolean.
 Notation succ := S.
 
 
-Module Tribools.
+Inductive Basic : Set := 
+  | unknown | known : B -> Basic.
 
-Inductive Tribool : Set := 
-  | unknown | known : B -> Tribool.
+Module Basic.
 
 Ltac destr_kleene :=
- intros; destruct_all Tribool; destruct_all bool; simpl in *; trivial; try discriminate.
+ intros; destruct_all Basic; destruct_all bool; simpl in *; trivial; try discriminate.
 
-Notation TB := Tribool.
 Notation tru := (known true).
 Notation indt := (unknown).
 Notation fls := (known false).
 
-Definition definitely (tb : Tribool) : B :=
+Definition definitely (tb : Basic) : B :=
   match tb with | known true => true | _ => false end.
-Definition possibly (tb : Tribool) : B :=
+Definition possibly (tb : Basic) : B :=
   match tb with | known false => false | _ => true end.
 
-Definition refines (tb1 tb2 : Tribool) : Prop :=
+Definition refines (tb1 tb2 : Basic) : Prop :=
   match tb1, tb2 with
   | _, indt => True
   | tru, tru => True
@@ -41,16 +40,16 @@ Definition refines (tb1 tb2 : Tribool) : Prop :=
   | _, _ => False
   end.
 
-Lemma refines_refl : Relation_Definitions.reflexive Tribool refines.
+Lemma refines_refl : Relation_Definitions.reflexive Basic refines.
 Proof. unfold Relation_Definitions.reflexive. destr_kleene. Qed.
 
-Lemma refines_trans : Relation_Definitions.transitive Tribool refines.
+Lemma refines_trans : Relation_Definitions.transitive Basic refines.
 Proof. unfold Relation_Definitions.transitive. destr_kleene. Qed.
 
 Instance refines_is_reflexive : RelationClasses.Reflexive refines := refines_refl.
 Instance refines_is_transitive : RelationClasses.Transitive refines := refines_trans.
 
-Instance TriboolBasis : BasicTopologic.Basis (Tribool) :=
+Instance Basis : BasicTopologic.Basis (Basic) :=
 {
   refines := refines;
   refines_refl := refines_refl;
@@ -58,27 +57,27 @@ Instance TriboolBasis : BasicTopologic.Basis (Tribool) :=
 }.
 
 
-Local Definition common_of (b1 b2 : B) : TB :=
+Local Definition common_of (b1 b2 : B) : Basic :=
   match b1, b2 with
   | true, true => known true
   | false, false => known false
   | _, _ => unknown
   end.
 
-Local Definition common_of_four (b1 b2 b3 b4 : B) : TB :=
+Local Definition common_of_four (b1 b2 b3 b4 : B) : Basic :=
   match b1, b2, b3, b4 with
   | true, true, true, true => known true
   | false, false, false, false => known false
   | _, _, _, _ => unknown
   end.
 
-Local Definition lift_kleene (op : B -> B) (k : TB) : TB :=
+Local Definition lift_kleene (op : B -> B) (k : Basic) : Basic :=
   match k with 
   | unknown => common_of (op false) (op true)
   | known b => known (op b)
   end.
 
-Local Definition lift_binary_kleene (op : B -> B -> B) (k1 : TB) (k2 : TB) : TB :=
+Local Definition lift_binary_kleene (op : B -> B -> B) (k1 : Basic) (k2 : Basic) : Basic :=
   match k1, k2 with 
   | unknown, unknown => common_of_four (op true true) (op true false) (op false true) (op false false)
   | unknown, known b2 => lift_kleene (fun b1 => op b1 b2) k1
@@ -93,14 +92,14 @@ Local Definition or' := lift_binary_kleene orb.
 Local Definition iff' := lift_binary_kleene Bool.eqb.
 
 
-Definition not (t : Tribool) : Tribool :=
+Definition not (t : Basic) : Basic :=
   match t with
   | fls => tru
   | indt => indt
   | tru => fls
   end.
 
-Definition impl (t1 t2 : Tribool) : Tribool :=
+Definition impl (t1 t2 : Basic) : Basic :=
   match (t1,t2) with
   | (fls,_) => tru
   | (_,tru) => tru
@@ -109,7 +108,7 @@ Definition impl (t1 t2 : Tribool) : Tribool :=
   | (_,_) => fls
   end.
 
-Definition and (t1 t2 : Tribool) : Tribool :=
+Definition and (t1 t2 : Basic) : Basic :=
   match (t1,t2) with
   | (fls,_) => fls
   | (_,fls) => fls
@@ -118,7 +117,7 @@ Definition and (t1 t2 : Tribool) : Tribool :=
   | (_,_) => tru
   end.
 
-Definition or (t1 t2 : Tribool) : Tribool :=
+Definition or (t1 t2 : Basic) : Basic :=
   match (t1,t2) with
   | (tru,_) => tru
   | (_,tru) => tru
@@ -127,7 +126,7 @@ Definition or (t1 t2 : Tribool) : Tribool :=
   | (_,_) => fls
   end.
 
-Definition iff (t1 t2 : Tribool) : Tribool :=
+Definition iff (t1 t2 : Basic) : Basic :=
   match (t1,t2) with
   | (indt,_) => indt
   | (_,indt) => indt
@@ -147,16 +146,16 @@ Local Lemma iff_same : forall k1 k2, iff k1 k2 = iff' k1 k2.
 Proof. destr_kleene. Qed.
 
 
-Definition Tribool_of_Bool : B -> Tribool :=
+Definition of_Bool : B -> Basic :=
   fun b => known b.
 
-Lemma eq_dne : forall t1 t2 : Tribool, ~ (t1 <> t2) -> t1 = t2. 
+Lemma eq_dne : forall t1 t2 : Basic, ~ (t1 <> t2) -> t1 = t2. 
 Proof. destr_kleene. all:exfalso; apply H; discriminate. Qed.
 
-Lemma eq_dec : forall (t1 t2 : Tribool), {t1 = t2} + {t1 <> t2 }.
+Lemma eq_dec : forall (t1 t2 : Basic), {t1 = t2} + {t1 <> t2 }.
 Proof. destr_kleene. 1,6,9: left; reflexivity. all: right; discriminate. Qed.
 
-Lemma not_eq_dec : forall (t1 t2 : Tribool), {t1 <> t2} + {~ t1 <> t2 }.
+Lemma not_eq_dec : forall (t1 t2 : Basic), {t1 <> t2} + {~ t1 <> t2 }.
 Proof. destr_kleene. 1,6,9: right; intro H; apply H; reflexivity. all: left; discriminate. Qed.
 
 Lemma tru_or_fls_dec : forall t, (t = tru \/ t = fls) -> {t=tru} + {t=fls}.
@@ -167,9 +166,9 @@ Proof.
   - right; reflexivity.
 Qed.
 
-Lemma tru_or_fls_iff_not_indt : forall t: Tribool, t = tru \/ t = fls <-> t <> indt.
+Lemma tru_or_fls_iff_not_indt : forall t: Basic, t = tru \/ t = fls <-> t <> indt.
 Proof. 
-  intro t. destruct_all TB; destruct_all B.
+  intro t. destruct_all Basic; destruct_all B.
   - split. intros Htf Hni; destruct Htf; discriminate. intro H. exfalso; apply H; reflexivity.
   - split. discriminate. intro H; left; reflexivity.
   - split. discriminate. intro H; right; reflexivity.
@@ -186,13 +185,13 @@ Proof. destr_kleene. all: tauto. Qed.
 Lemma and_tru : forall t1 t2, and t1 t2 = tru -> t1 = tru /\ t2 = tru.
 Proof. destr_kleene. all: tauto. Qed.
 
-Lemma and_fls: forall t1 t2 : Tribool, and t1 t2 = fls -> t1 = fls \/ t2 = fls.
+Lemma and_fls: forall t1 t2 : Basic, and t1 t2 = fls -> t1 = fls \/ t2 = fls.
 Proof. destr_kleene. all: tauto. Qed.
 
 Lemma or_tru : forall t1 t2, or t1 t2 = tru -> t1 = tru \/ t2 = tru.
 Proof. destr_kleene. all: tauto. Qed.
 
-Lemma or_fls: forall t1 t2 : Tribool, or t1 t2 = fls -> t1 = fls /\ t2 = fls.
+Lemma or_fls: forall t1 t2 : Basic, or t1 t2 = fls -> t1 = fls /\ t2 = fls.
 Proof. destr_kleene. all: tauto. Qed.
 
 
@@ -218,10 +217,8 @@ Proof. destr_kleene. all: tauto. Qed.
 Lemma impl_eq_or_not : forall t1 t2, impl t1 t2 = or (not t1) t2.
 Proof. destr_kleene. all: tauto. Qed.
 
-
-
 Lemma not_is_monotone_operator : 
-  @BasicTopologic.is_monotone_unary_operator Tribool TriboolBasis not.
+  @BasicTopologic.is_monotone_unary_operator Basic Basic.Basis not.
 Proof. unfold BasicTopologic.is_monotone_unary_operator. destr_kleene. Qed.
 
 Lemma impl_is_monotone_operator : BasicTopologic.is_monotone_binary_operator impl.
@@ -236,7 +233,10 @@ Proof. unfold BasicTopologic.is_monotone_binary_operator. destr_kleene. Qed.
 Lemma iff_is_monotone_operator : BasicTopologic.is_monotone_binary_operator iff.
 Proof. unfold BasicTopologic.is_monotone_binary_operator. destr_kleene. Qed.
 
-End Tribools.
+End Basic.
+
+
+
 
 
 
@@ -248,26 +248,26 @@ Infix "<=" := le.
 Notation B := bool.
 Notation succ := S.
 
-Import Tribools.
+Import Basic.
 
-Notation TB := Tribools.Tribool.
-Notation TBBasis := Tribools.TriboolBasis.
+Notation TB := Basic.
+Notation TBBasis := Basic.Basis.
 
-Notation TBtru := Tribools.tru.
-Notation TBindt := Tribools.indt.
-Notation TBfls := Tribools.fls.
-Notation TBnot := Tribools.not.
-Notation TBimpl := Tribools.impl.
-Notation TBand := Tribools.and.
-Notation TBor := Tribools.or.
-Notation TBiff := Tribools.iff.
+Notation TBtru := Basic.tru.
+Notation TBindt := Basic.indt.
+Notation TBfls := Basic.fls.
+Notation TBnot := Basic.not.
+Notation TBimpl := Basic.impl.
+Notation TBand := Basic.and.
+Notation TBor := Basic.or.
+Notation TBiff := Basic.iff.
 
 
-Definition is_monotone := @BasicTopologic.is_monotone N Lattice_N TB TBBasis.
+Definition is_monotone := @BasicTopologic.is_monotone N Lattice_N Basic Basic.Basis.
 
-Lemma is_monotone_tru_fls : forall (tbs : N -> TB),
+Lemma is_monotone_tru_fls : forall (tbs : N -> Basic),
   is_monotone tbs -> forall (m n : N), m <= n ->
-  (tbs m = TBtru -> tbs n = TBtru) /\ (tbs m = TBfls -> tbs n = TBfls).
+  (tbs m = Basic.tru -> tbs n = Basic.tru) /\ (tbs m = Basic.fls -> tbs n = Basic.fls).
 Proof.
   unfold is_monotone, BasicTopologic.is_monotone.
   intros tbs H m n Hmn.
@@ -287,8 +287,8 @@ Proof.
     -- destruct b, b0; tauto.
 Qed.
 
-Lemma is_monotone_indt : forall (tbs : N -> TB), 
-  is_monotone tbs -> forall m n, (m <= n -> tbs n = TBindt -> tbs m = TBindt).
+Lemma is_monotone_indt : forall (tbs : N -> Basic), 
+  is_monotone tbs -> forall m n, (m <= n -> tbs n = Basic.indt -> tbs m = Basic.indt).
 Proof.
   intros tbs H m n Hmn.
   pose proof (is_monotone_tru_fls tbs H) as Htf. 
@@ -307,7 +307,7 @@ Qed.
 Declare Scope Kleenean_scope.
 
 Record PreKleenean := mkPreKleenean {
-  tbs :> N -> TB;
+  tbs :> N -> Basic;
   proper : is_monotone tbs
 }.
 
@@ -369,7 +369,7 @@ Qed.
 
 
 
-Definition apart (k1 k2 : K) := exists i : N, k1 i <> TBindt /\ k2 i <> TBindt /\ k1 i <> k2 i.
+Definition apart (k1 k2 : K) := exists i : N, k1 i <> Basic.indt /\ k2 i <> Basic.indt /\ k1 i <> k2 i.
 Infix "#" := apart (at level 55, no associativity) : Kleenean_scope.
 
 Lemma apart_irrefl : forall k : K, k # k -> False.
@@ -385,21 +385,21 @@ Qed.
 
 
 
-Definition definitely (k : K) : Prop := exists i, k i = TBtru.
-(* Equivalently, forall i, ~ (ki = TBfls) *)
+Definition definitely (k : K) : Prop := exists i, k i = Basic.tru.
+(* Equivalently, forall i, ~ (ki = Basic.fls) *)
 
-Definition possibly (k : K) : Prop := ~ (exists i, k i = TBfls).
+Definition possibly (k : K) : Prop := ~ (exists i, k i = Basic.fls).
 
 
 
-Lemma cnst_monotone : forall t : TB, is_monotone (fun _ => t).
+Lemma cnst_monotone : forall t : Basic, is_monotone (fun _ => t).
 Proof. unfold is_monotone. intros t m n Hmn. destruct t. simpl. tauto. destruct b; simpl; tauto. Qed.
 
-Definition constant (t : TB) := mkPreKleenean (fun _ => t) (cnst_monotone t).
+Definition constant (t : Basic) := mkPreKleenean (fun _ => t) (cnst_monotone t).
 
-Definition true := constant TBtru.
-Definition indeterminate := constant TBindt.
-Definition false := constant TBfls.
+Definition true := constant Basic.tru.
+Definition indeterminate := constant Basic.indt.
+Definition false := constant Basic.fls.
 
 Lemma true_apart_false : apart true false.
 Proof. unfold apart. exists bot. unfold true, false. simpl. split; try split; discriminate. Qed.
@@ -408,68 +408,68 @@ Lemma indeterminate_not_apart : forall (k : PreKleenean), ~ (indeterminate # k).
 Proof. intro k. unfold apart. intros [i [H _]]. apply H. unfold indeterminate. reflexivity. Qed.
 
 
-Lemma not_monotone (k : N -> TB) (Hk : is_monotone k)
-  : is_monotone (fun n => TBnot (k n)).
+Lemma not_monotone (k : N -> Basic) (Hk : is_monotone k)
+  : is_monotone (fun n => Basic.not (k n)).
 Proof. 
   apply BasicTopologic.is_monotone_unary_lift. 
-  now apply Tribools.not_is_monotone_operator. 
+  now apply Basic.not_is_monotone_operator. 
   exact Hk.
 Qed.
 
 Definition not (k : PreKleenean) : PreKleenean :=
-  mkPreKleenean (fun i => TBnot (k i)) (not_monotone k (proper k)).
+  mkPreKleenean (fun i => Basic.not (k i)) (not_monotone k (proper k)).
 
 
-Lemma impl_monotone (k1 k2 : N -> TB) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
-  : is_monotone (fun n => TBimpl (k1 n) (k2 n)).
+Lemma impl_monotone (k1 k2 : N -> Basic) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
+  : is_monotone (fun n => Basic.impl (k1 n) (k2 n)).
 Proof.
   apply BasicTopologic.is_monotone_binary_lift. 
-  now apply Tribools.impl_is_monotone_operator. 
+  now apply Basic.impl_is_monotone_operator. 
   exact Hk1. exact Hk2.
 Qed.
 
 Definition impl (k1 k2 : PreKleenean) : PreKleenean :=
-  mkPreKleenean (fun i => TBimpl (k1 i) (k2 i)) (impl_monotone k1 k2 (proper k1) (proper k2)).
+  mkPreKleenean (fun i => Basic.impl (k1 i) (k2 i)) (impl_monotone k1 k2 (proper k1) (proper k2)).
 
-Lemma not_monotone' (k : N -> TB) (Hk : is_monotone k)
-  : is_monotone (fun n => TBnot (k n)).
+Lemma not_monotone' (k : N -> Basic) (Hk : is_monotone k)
+  : is_monotone (fun n => Basic.not (k n)).
 Proof.
-  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => TBimpl (k n) TBfls ) ).
-  intro n. rewrite -> Tribools.not_eq_impl_fls. reflexivity.
+  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => Basic.impl (k n) Basic.fls ) ).
+  intro n. rewrite -> Basic.not_eq_impl_fls. reflexivity.
   apply impl_monotone.
   exact Hk.
   now apply cnst_monotone.
 Qed.
 
 
-Lemma and_monotone (k1 k2 : N -> TB) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
-  : is_monotone (fun n => TBand (k1 n) (k2 n)).
+Lemma and_monotone (k1 k2 : N -> Basic) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
+  : is_monotone (fun n => Basic.and (k1 n) (k2 n)).
 Proof.
-  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => TBnot (TBimpl (k1 n) (TBnot (k2 n))) ) ).
-  intro n. rewrite -> Tribools.and_eq_not_impl_not. reflexivity.
+  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => Basic.not (Basic.impl (k1 n) (Basic.not (k2 n))) ) ).
+  intro n. rewrite -> Basic.and_eq_not_impl_not. reflexivity.
   apply not_monotone.
   apply impl_monotone.
   exact Hk1.
   apply not_monotone; exact Hk2.
 Qed.
 
-Lemma and_monotone' (k1 k2 : N -> TB) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
-  : is_monotone (fun n => TBand (k1 n) (k2 n)).
+Lemma and_monotone' (k1 k2 : N -> Basic) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
+  : is_monotone (fun n => Basic.and (k1 n) (k2 n)).
 Proof.
   apply BasicTopologic.is_monotone_binary_lift. 
-  now apply Tribools.and_is_monotone_operator. 
+  now apply Basic.and_is_monotone_operator. 
   exact Hk1. exact Hk2.
 Qed.
 
 Definition and (k1 k2 : PreKleenean) : PreKleenean :=
-  mkPreKleenean (fun i => TBand (k1 i) (k2 i)) (and_monotone k1 k2 (proper k1) (proper k2)).
+  mkPreKleenean (fun i => Basic.and (k1 i) (k2 i)) (and_monotone k1 k2 (proper k1) (proper k2)).
 
 
-Lemma or_monotone (k1 k2 : N -> TB) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
-  : is_monotone (fun n => TBor (k1 n) (k2 n)).
+Lemma or_monotone (k1 k2 : N -> Basic) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
+  : is_monotone (fun n => Basic.or (k1 n) (k2 n)).
 Proof.
-  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => TBnot (TBand (TBnot (k1 n)) (TBnot (k2 n))) ) ).
-  intro n. rewrite -> Tribools.or_eq_not_and_not. reflexivity.
+  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => Basic.not (Basic.and (Basic.not (k1 n)) (Basic.not (k2 n))) ) ).
+  intro n. rewrite -> Basic.or_eq_not_and_not. reflexivity.
   apply not_monotone.
   apply and_monotone.
   apply not_monotone; exact Hk1.
@@ -477,28 +477,28 @@ Proof.
 Qed.
 
 Definition or (k1 k2 : PreKleenean) : PreKleenean :=
-  mkPreKleenean (fun i => TBor (k1 i) (k2 i)) (or_monotone k1 k2 (proper k1) (proper k2)).
+  mkPreKleenean (fun i => Basic.or (k1 i) (k2 i)) (or_monotone k1 k2 (proper k1) (proper k2)).
 
 
-Lemma iff_monotone (k1 k2 : N -> TB) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
-  : is_monotone (fun n => TBiff (k1 n) (k2 n)).
+Lemma iff_monotone (k1 k2 : N -> Basic) (Hk1 : is_monotone k1) (Hk2 : is_monotone k2)
+  : is_monotone (fun n => Basic.iff (k1 n) (k2 n)).
 Proof.
-  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => TBand (TBimpl (k1 n) (k2 n)) (TBimpl (k2 n) (k1 n)) ) ).
-  intro n. rewrite -> Tribools.iff_eq_impl_and_rimpl. reflexivity.
+  apply ( BasicTopologic.is_monotone_extensional ( fun n : N => Basic.and (Basic.impl (k1 n) (k2 n)) (Basic.impl (k2 n) (k1 n)) ) ).
+  intro n. rewrite -> Basic.iff_eq_impl_and_rimpl. reflexivity.
   apply and_monotone.
   apply impl_monotone. exact Hk1. exact Hk2.
   apply impl_monotone. exact Hk2. exact Hk1.
 Qed.
 
 Definition iff (k1 k2 : PreKleenean) : PreKleenean :=
-  mkPreKleenean (fun i => TBiff (k1 i) (k2 i)) (iff_monotone k1 k2 (proper k1) (proper k2)).
+  mkPreKleenean (fun i => Basic.iff (k1 i) (k2 i)) (iff_monotone k1 k2 (proper k1) (proper k2)).
 
 Instance Setoid_PreKleenean : Setoid PreKleenean := { equiv := equiv }.
 
 
 
 Definition all_indt_or_exists_tru_or_fls (k : K) : Prop := 
-  (forall i, k i = TBindt) \/ (exists i, k i = TBtru \/ k i = TBfls).
+  (forall i, k i = Basic.indt) \/ (exists i, k i = Basic.tru \/ k i = Basic.fls).
 
 Lemma all_ge : forall (p : nat -> Prop) (i : nat),
   (p i) -> (forall j : nat, p j -> p (succ j)) -> (forall j, (i <= j)%nat -> p j).
@@ -515,11 +515,11 @@ Qed.
 
 
 
-Lemma all_from_not_indt : forall k : K, forall i, (k i <> TBindt -> forall j, i <= j -> k j = k i).
+Lemma all_from_not_indt : forall k : K, forall i, (k i <> Basic.indt -> forall j, i <= j -> k j = k i).
 Proof.
   intro k. destruct k as [tbs Htbs].
   unfold is_monotone, BasicTopologic.is_monotone in Htbs. simpl in Htbs.
-  unfold BasicTopologic.refines, Tribools.refines in Htbs. simpl in Htbs.
+  unfold BasicTopologic.refines, Basic.refines in Htbs. simpl in Htbs.
   simpl.
   intros m Hm n Hmn.
   specialize Htbs with m n as Htbs'. clear Htbs. pose proof (Htbs' Hmn) as Htbs. clear Htbs'.
@@ -557,7 +557,7 @@ Qed.
 Lemma not_eq_impl_false : forall k : K, not k == impl k false.
 Proof.
   intros k. unfold equiv, not, false, impl. simpl.
-  exists bot. intros j H0lej. now apply Tribools.not_eq_impl_fls. 
+  exists bot. intros j H0lej. now apply Basic.not_eq_impl_fls. 
 Qed.
 
 Lemma not_respectful' : forall k k' : K, k == k' -> not k == not k'.
@@ -586,7 +586,7 @@ Qed.
 Lemma or_eq_impl_not : forall k1 k2 : K, or k1 k2 == impl (not k1) k2.
 Proof.
   intros k1 k2. unfold equiv, or, impl, not. simpl.
-  exists bot. intros j H0lej. now apply Tribools.or_eq_impl_not.
+  exists bot. intros j H0lej. now apply Basic.or_eq_impl_not.
 Qed.
 
 Lemma or_respectful : forall k1 k1' k2 k2' : K, k1 == k1' -> k2 == k2' -> or k1 k2 == or k1' k2'.
@@ -604,7 +604,7 @@ Qed.
 Lemma and_eq_not_impl_not : forall k1 k2 : K, and k1 k2 == not (impl k1 (not k2)).
 Proof.
   intros k1 k2. unfold equiv, and, not, impl, not. simpl.
-  exists bot. intros j H0lej. now apply Tribools.and_eq_not_impl_not.
+  exists bot. intros j H0lej. now apply Basic.and_eq_not_impl_not.
 Qed.
 
 Lemma and_respectful : forall k1 k1' k2 k2' : K, k1 == k1' -> k2 == k2' -> and k1 k2 == and k1' k2'.
@@ -622,7 +622,7 @@ Qed.
 Lemma iff_eq_impl_and_rimpl : forall k1 k2 : K, iff k1 k2 == and (impl k1 k2) (impl k2 k1).
 Proof.
   intros k1 k2. unfold equiv, iff, and, impl, impl. simpl.
-  exists bot. intros j H0lej. now apply Tribools.iff_eq_impl_and_rimpl.
+  exists bot. intros j H0lej. now apply Basic.iff_eq_impl_and_rimpl.
 Qed.
 
 Lemma iff_respectful : forall k1 k1' k2 k2' : K, k1 == k1' -> k2 == k2' -> iff k1 k2 == iff k1' k2'.
@@ -706,12 +706,12 @@ Lemma defined_dec : forall k : Kleenean,
   (k == true \/ k == false) -> ({k == true} + {k == false}).
 Proof.
   intros k H.
-  assert (exists i, k i = Tribools.tru \/ k i = Tribools.fls) as Hi. {
+  assert (exists i, k i = Basic.tru \/ k i = Basic.fls) as Hi. {
     destruct H as [[i H]|[i H]]; specialize H with i; exists i.
     - left; exact (H (Nat.le_refl i)).
     - right; exact (H (Nat.le_refl i)).
   }
-  assert ({ i | k i = Tribools.tru \/ k i = Tribools.fls}) as Hsi. {
+  assert ({ i | k i = Basic.tru \/ k i = Basic.fls}) as Hsi. {
     apply constructive_indefinite_ground_description_nat.
     - intros i. destruct (k i); try (destruct b).
       -- right. intro Hf. destruct Hf. discriminate. discriminate.
@@ -720,7 +720,7 @@ Proof.
     - exact Hi.
   }
   destruct Hsi as [i Hsi].
-  assert ({k i = Tribools.tru} + {k i = Tribools.fls}) as Hssi. {
+  assert ({k i = Basic.tru} + {k i = Basic.fls}) as Hssi. {
     destruct (k i); try (destruct b).
     - exfalso. destruct Hsi; discriminate.
     - left; reflexivity.
@@ -742,16 +742,16 @@ Proof.
   split.
   - intro Himpl.
     destruct Himpl as [i Himpl].
-    assert (Tribools.impl (k1 i) (k2 i) = Tribools.tru) as Handi by exact (Himpl i (Nat.le_refl i)).
-    assert (k1 i = Tribools.fls \/ k2 i = Tribools.tru) as Habi by exact (Tribools.impl_tru _ _ Handi).
+    assert (Basic.impl (k1 i) (k2 i) = Basic.tru) as Handi by exact (Himpl i (Nat.le_refl i)).
+    assert (k1 i = Basic.fls \/ k2 i = Basic.tru) as Habi by exact (Basic.impl_tru _ _ Handi).
     destruct Habi as [Hai|Hbi].
     -- left. exists i. rewrite <- Hai. apply (all_from_not_indt k1). rewrite -> Hai. discriminate.
     -- right. exists i. rewrite <- Hbi. apply (all_from_not_indt k2). rewrite -> Hbi. discriminate.
   - intro Hor.
     unfold equiv; simpl.
     destruct Hor as [[i Hai] | [i Hbi]].
-    -- exists i. intros j Hilej. rewrite -> (Hai j Hilej). now unfold Tribools.impl.
-    -- exists i. intros j Hilej. rewrite -> (Hbi j Hilej). unfold Tribools.impl. 
+    -- exists i. intros j Hilej. rewrite -> (Hai j Hilej). now unfold Basic.impl.
+    -- exists i. intros j Hilej. rewrite -> (Hbi j Hilej). unfold Basic.impl. 
        destruct (k1 j). reflexivity. destruct b; reflexivity.
 Qed.
 
@@ -764,11 +764,11 @@ Proof.
     destruct Hand as [i Hand]. 
     split.
     exists i. intros j Hilej. specialize Hand with j. apply Hand in Hilej as Handj.
-    apply Tribools.impl_fls in Handj. exact (proj1 Handj).
+    apply Basic.impl_fls in Handj. exact (proj1 Handj).
     exists i. intros j Hilej. specialize Hand with j. apply Hand in Hilej as Handj.
-    apply Tribools.impl_fls in Handj. exact (proj2 Handj).
+    apply Basic.impl_fls in Handj. exact (proj2 Handj).
   - intros [[ia Ha] [ib Hb]]. set (iab := max ia ib). exists iab.
-    intros j Hj. simpl. rewrite -> (Ha j), -> (Hb j). unfold Tribools.and. reflexivity.
+    intros j Hj. simpl. rewrite -> (Ha j), -> (Hb j). unfold Basic.and. reflexivity.
     apply (Nat.le_trans _ iab). apply (Nat.le_max_r ia ib). exact Hj.
     apply (Nat.le_trans _ iab). apply (Nat.le_max_l ia ib). exact Hj.
 Qed.
@@ -834,7 +834,7 @@ Instance instance : AbstractKleenean Kleenean :=
 
 
 
-Definition ClassicalKleenean := Tribools.Tribool.
+Definition ClassicalKleenean := Basic.
 
 (* The Limited Principle of Omniscence *)
 Definition LPO := forall p : nat -> Prop, (forall n : nat, {p n} + {~ p n}) ->
@@ -844,8 +844,8 @@ Lemma eqv_true_or_indeterminate_or_false_dec :
   LPO -> forall k : Kleenean, { k == true } + { k == indeterminate } + { k == false } .
 Proof.
   intros lpo k.
-  set (p := fun n => k n <> Tribools.indt).
-  assert (forall n, {p n} + {~ p n}) as Hpdec by (intro n; now apply Tribools.not_eq_dec).
+  set (p := fun n => k n <> Basic.indt).
+  assert (forall n, {p n} + {~ p n}) as Hpdec by (intro n; now apply Basic.not_eq_dec).
   set (H := lpo p Hpdec).
   unfold p in H.
   destruct H as [Hni|Hi].
@@ -860,7 +860,7 @@ Proof.
     -- left; left. unfold equiv. exists i. rewrite <- Heqki in Hj. exact Hj. 
     -- right. unfold equiv. exists i. rewrite <- Heqki in Hj. exact Hj. 
   - left; right. unfold equiv. exists 0. intros j H0lej. 
-    specialize Hi with j. apply Tribools.eq_dne in Hi. exact Hi.
+    specialize Hi with j. apply Basic.eq_dne in Hi. exact Hi.
 Qed.
 
 Definition to_classical (lpo : LPO) (k : Kleenean) : ClassicalKleenean :=
@@ -868,20 +868,20 @@ Definition to_classical (lpo : LPO) (k : Kleenean) : ClassicalKleenean :=
     match Hk with
     | inleft Hti =>
          match Hti with
-         | left Ht => Tribools.tru
-         | right Hf => Tribools.indt
+         | left Ht => Basic.tru
+         | right Hf => Basic.indt
          end
-    | inright Hf => Tribools.fls
+    | inright Hf => Basic.fls
     end
 .
 
 
 Lemma constant_eqv {N : Set} {Lattice_N : Lattice N} : 
-  forall {c1 c2 : Tribools.Tribool}, constant c1 == constant c2 -> c1 = c2.
+  forall {c1 c2 : Basic}, constant c1 == constant c2 -> c1 = c2.
 Proof. intros c1 c2 H. unfold equiv in H. destruct H as [i H]. apply (H i). reflexivity. Qed.
 
 Lemma compare_with_constants {N : Set} {Lattice_N : Lattice N} : 
-  forall {k : PreKleenean} {c1 c2 : Tribools.Tribool}, 
+  forall {k : PreKleenean} {c1 c2 : Basic}, 
     k == constant c1 -> k == constant c2 -> c1 = c2.
 Proof. 
   intros k c1 c2 H1 H2.
